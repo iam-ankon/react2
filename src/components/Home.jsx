@@ -1,32 +1,120 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import "react-resizable/css/styles.css";
 import { CChart } from "@coreui/react-chartjs";
 
 const HomePage = () => {
-  const [sizes, setSizes] = useState([800, 300, 300]);
+  const width = window.innerWidth / 3;
+  const height = window.innerHeight / 2.1;
+  const [sizes, setSizes] = useState([
+    { width: width, height: height },
+    { width: width, height: height },
+    { width: width, height: height },
+  ]);
 
-  const handleResize = (index, newWidth) => {
-    const totalWidth = sizes.reduce((a, b) => a + b, 0);
+  const handleResize = (index, newWidth, newHeight) => {
+    const totalWidth = sizes.reduce((sum, size) => sum + size.width, 0);
+    const totalHeight = sizes.reduce((sum, size) => sum + size.height, 0);
+
     const remainingWidth = totalWidth - newWidth;
+    const remainingHeight = totalHeight - newHeight;
 
     const otherIndexes = sizes.map((_, i) => i).filter((i) => i !== index);
     const newSizes = [...sizes];
-    const otherSizeSum = otherIndexes.reduce((sum, i) => sum + sizes[i], 0);
+
+    const otherSizeSumWidth = otherIndexes.reduce(
+      (sum, i) => sum + sizes[i].width,
+      0
+    );
+    const otherSizeSumHeight = otherIndexes.reduce(
+      (sum, i) => sum + sizes[i].height,
+      0
+    );
 
     otherIndexes.forEach((i) => {
-      newSizes[i] = Math.max(200, (remainingWidth * sizes[i]) / otherSizeSum);
+      newSizes[i] = {
+        width: Math.max(
+          200,
+          (remainingWidth * sizes[i].width) / otherSizeSumWidth
+        ),
+        height: Math.max(
+          200,
+          (remainingHeight * sizes[i].height) / otherSizeSumHeight
+        ),
+      };
     });
 
-    newSizes[index] = newWidth;
+    newSizes[index] = { width: newWidth, height: newHeight };
     setSizes(newSizes);
   };
+
+  const [chartData, setChartData] = useState(null);
+  const [chartData2, setChartData2] = useState(null);
+
+  const [chartData3, setChartData3] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/DatabaseDesign/orders/"
+        );
+        const data = await response.json();
+
+        const labels = data.map((item) => item.buyer_name);
+        const values = data.map((item) => parseFloat(item.total_value));
+        const values2 = data.map((item) => parseFloat(item.shipped_qty));
+        const labels2 = data.map((item) => item.supplier_name);
+        const values3 = data.map((item) => parseFloat(item.qty));
+        const labels3 = data.map((item) => item.supplier_name);
+
+        const backgroundColors = labels.map(
+          () =>
+            `#${Math.floor(Math.random() * 16777215)
+              .toString(16)
+              .padStart(6, "0")}`
+        );
+
+        setChartData({
+          labels: labels,
+          datasets: [
+            {
+              data: values,
+              backgroundColor: backgroundColors,
+            },
+          ],
+        });
+        setChartData2({
+          labels: labels2,
+          datasets: [
+            {
+              data: values2,
+              backgroundColor: backgroundColors,
+            },
+          ],
+        });
+        setChartData3({
+          labels: labels3,
+          datasets: [
+            {
+              data: values3,
+              backgroundColor: backgroundColors,
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: "column", // Stacks the sections vertically
+        flexDirection: "column", 
         justifyContent: "flex-start",
         alignItems: "stretch",
         height: "100vh",
@@ -37,91 +125,58 @@ const HomePage = () => {
       <div
         style={{
           display: "flex",
+          flexDirection: "row",
           justifyContent: "space-between",
-          alignItems: "stretch", // Ensure the charts stretch to full height
-          overflowX: "auto",
-          marginBottom: "10px", // Spacing between charts and table
-          width: "100%", // Ensure the container takes up full width
+          alignItems: "stretch",
+          height: "50vh",
+          overflow: "hidden",
+          padding: "5px",
         }}
       >
         {sizes.map((size, index) => (
           <ResizableBox
             key={index}
-            width={size} // Size can still be adjusted dynamically
-            height={300} // Set height to 300px, but you can adjust based on need
-            minConstraints={[200, 200]} // Ensure min size constraints
-            maxConstraints={[800, 500]} // Ensure max size constraints
-            resizeHandles={["e"]} // Allow horizontal resize
-            onResizeStop={(e, { size: newSize }) =>
-              handleResize(index, newSize.width)
+            width={size.width}
+            height={size.height}
+            axis="both"
+            resizeHandles={["se"]}
+            minConstraints={[200, 200]}
+            maxConstraints={[1000, 1000]}
+            onResizeStop={(e, { size: { width, height } }) =>
+              handleResize(index, width, height)
             }
             style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#f9f9f9",
               border: "1px solid #ccc",
               padding: "10px",
-              background: "#fff",
               boxSizing: "border-box",
-              flex: 1, // Allow each chart box to grow/shrink based on available space
-              height: "100%", // Ensure each ResizableBox takes up the full height of its container
             }}
           >
-            <CChart
-              type={index === 0 ? "polarArea" : index === 1 ? "line" : "bar"}
-              data={
-                index === 0
-                  ? {
-                      labels: ["Red", "Green", "Yellow", "Grey", "Blue"],
-                      datasets: [
-                        {
-                          data: [11, 16, 7, 3, 14],
-                          backgroundColor: [
-                            "#FF6384",
-                            "#4BC0C0",
-                            "#FFCE56",
-                            "#E7E9ED",
-                            "#36A2EB",
-                          ],
-                        },
-                      ],
-                    }
-                  : index === 1
-                  ? {
-                      labels: ["January", "February", "March", "April", "May"],
-                      datasets: [
-                        {
-                          label: "Dataset 1",
-                          data: [30, 20, 40, 25, 35],
-                          backgroundColor: "rgba(151, 187, 205, 0.2)",
-                          borderColor: "rgba(151, 187, 205, 1)",
-                        },
-                      ],
-                    }
-                  : {
-                      labels: [
-                        "Monday",
-                        "Tuesday",
-                        "Wednesday",
-                        "Thursday",
-                        "Friday",
-                      ],
-                      datasets: [
-                        {
-                          label: "Dataset 2",
-                          data: [12, 19, 3, 5, 2],
-                          backgroundColor: "rgba(75,192,192,0.4)",
-                          borderColor: "rgba(75,192,192,1)",
-                        },
-                      ],
-                    }
-              }
-              style={{
-                height: "100%", // Make chart responsive to the box height
-                width: "100%", // Make chart responsive to the box width
-              }}
-            />
+            {chartData ? (
+              <CChart
+                type={index === 0 ? "doughnut" : index === 1 ? "line" : "bar"}
+                data={
+                  index === 0
+                    ? chartData
+                    : index === 1
+                    ? chartData2
+                    : chartData3
+                }
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                }}
+                style={{ width: "100%", height: "100%" }}
+              />
+            ) : (
+              <p>Loading chart...</p>
+            )}
           </ResizableBox>
         ))}
       </div>
-
       <div style={{ overflowX: "auto", width: "100%" }}>
         <table
           className="table"
@@ -144,8 +199,8 @@ const HomePage = () => {
                 <th
                   key={index}
                   style={{
-                    padding: "1vw 2vw", // Responsive padding (viewport-based units)
-                    textAlign: "left", // Align text to the left
+                    padding: "1vw 2vw", 
+                    textAlign: "left", 
                     border: "1px solid #ccc",
                   }}
                 >
@@ -160,7 +215,7 @@ const HomePage = () => {
               <tr key={rowIndex}>
                 <td
                   style={{
-                    padding: "1vw 2vw", // Match padding with <th>
+                    padding: "1vw 2vw", 
                     border: "1px solid #ccc",
                   }}
                 >
@@ -194,9 +249,7 @@ const HomePage = () => {
                 <td style={{ padding: "1vw 2vw", border: "1px solid #ccc" }}>
                   0%
                 </td>
-                {/* <td style={{ padding: "1vw 2vw", border: "1px solid #ccc" }}>
-                  <button className="btn btn-ghost btn-xs">details</button>
-                </td> */}
+              
               </tr>
             ))}
           </tbody>
